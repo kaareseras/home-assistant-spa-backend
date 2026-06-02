@@ -1,0 +1,110 @@
+from __future__ import annotations
+
+import json
+
+import requests
+import websocket
+
+
+class SpaBackendClient:
+    """Small REST + WebSocket helper for the spa backend."""
+
+    def __init__(self, base_url: str, username: str, password: str) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.username = username
+        self.password = password
+        self.access_token = ""
+        self.refresh_token = ""
+
+    def login(self) -> dict:
+        response = requests.post(
+            f"{self.base_url}/users/login",
+            data={"username": self.username, "password": self.password},
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        self.access_token = payload.get("access_token", "")
+        self.refresh_token = payload.get("refresh_token", "")
+        return payload
+
+    def _headers(self) -> dict:
+        if not self.access_token:
+            self.login()
+        return {"Authorization": f"Bearer {self.access_token}"}
+
+    def list_devices(self) -> list[dict]:
+        response = requests.get(
+            f"{self.base_url}/devices",
+            headers=self._headers(),
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def find_device_by_uid(self, device_uid: str) -> dict:
+        for device in self.list_devices():
+            if str(device.get("device_uid", "")) == device_uid:
+                return device
+        raise ValueError(f"Device UID {device_uid!r} not found")
+
+    def set_temperature(self, device_id: int, temperature: float) -> dict:
+        response = requests.post(
+            f"{self.base_url}/devices/{device_id}/commands",
+            headers=self._headers(),
+            json={
+                "command_type": "set_temp_setpoint",
+                "payload": {"temperature": float(temperature)},
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def send_toggle(self, device_id: int, command_type: str, enabled: bool) -> dict:
+        response = requests.post(
+            f"{self.base_url}/devices/{device_id}/commands",
+            headers=self._headers(),
+            json={
+                "command_type": command_type,
+                "payload": {"enabled": bool(enabled)},
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def fetch_latest_telemetry(self, device_uid: str) -> dict:
+        response = requests.get(
+            f"{self.base_url}/telemetry/history/{device_uid}?fields=water_temp_c,temp_setpoint_c&max_rows=1",
+            headers=self._headers(),
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        samples = payload.get("samples", [])
+        if samples:
+            return samples[-1].get("values", {})
+        return {}
+
+    def ws_url(self) -> str:
+        return f"{self.base_url.replace('http://', 'ws://').replace('https://', 'wss://')}/ws/telemetry?token={self.access_token}"
+
+    def listen_updates(self, callback) -> None:
+        if not self.access_token:
+            self.login()
+
+        def _on_message(_ws, message):
+            try:
+                callback(json.loads(message))
+            except Exception:
+                pass
+
+        websocket.enableTrace(False)
+        ws = websocket.WebSocketApp(
+            self.ws_url(),
+            on_message=_on_message,
+            on_error=lambda _ws, err: None,
+            on_close=lambda *_: None,
+        )
+        ws.run_forever()

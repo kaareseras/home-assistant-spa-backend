@@ -1,0 +1,10 @@
+{
+  "domain": "spa_backend",
+  "name": "Spa Backend",
+  "codeowners": ["@openai"],
+  "config_flow": true,
+  "documentation": "https://example.invalid/README.md",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "requirements": ["websocket-client>=1.8.0"]
+}
