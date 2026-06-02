@@ -11,10 +11,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DEFAULT_SWITCHES, DOMAIN
 
 _STATE_KEY_BY_COMMAND = {
-    "jet_1": "jet_1_on",
-    "jet_2": "jet_2_on",
-    "toggle_blower": "blower_on",
-    "toggle_lights": "lights_on",
+    "jet_1": "jet_1",
+    "jet_2": "jet_2",
+    "toggle_blower": "blower",
+    "toggle_lights": "light",
 }
 
 
