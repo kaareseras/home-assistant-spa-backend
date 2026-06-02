@@ -19,10 +19,11 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors = {}
+        default_backend_url = "https://api.norviq.com"
 
         if user_input is not None:
             self._credentials = {
-                "backend_url": user_input["backend_url"],
+                "backend_url": default_backend_url,
                 "username": user_input["username"],
                 "password": user_input["password"],
             }
@@ -49,7 +50,6 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required("backend_url", default="http://localhost:8000"): str,
                     vol.Required("username"): str,
                     vol.Required("password"): str,
                 }
