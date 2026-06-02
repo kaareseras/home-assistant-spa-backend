@@ -1,10 +1,13 @@
 {
   "domain": "spa_backend",
   "name": "Norviq",
-  "codeowners": ["@openai"],
+  "codeowners": ["@kaareseras"],
   "config_flow": true,
   "documentation": "https://github.com/kaareseras/home-assistant-spa-backend#readme",
+  "issue_tracker": "https://github.com/kaareseras/home-assistant-spa-backend/issues",
+  "dependencies": [],
   "integration_type": "hub",
   "iot_class": "local_push",
-  "requirements": ["websocket-client>=1.8.0"]
+  "requirements": ["websocket-client>=1.8.0"],
+  "version": "0.1.0"
 }
