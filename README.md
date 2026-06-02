@@ -14,6 +14,15 @@ Highlights:
 - custom_components/spa_backend/  Home Assistant custom component
 - scripts/push_home_assistant_integration.sh  Push this repo to a remote
 
+## HACS install
+
+This repository is structured for HACS as a custom integration repository.
+
+1. Add this GitHub repo as a custom repository in HACS.
+2. Install the integration from HACS.
+3. Restart Home Assistant.
+4. Add the integration from Settings → Devices & Services → Add Integration.
+
 ## Quick start
 
 1. Copy this folder into your Home Assistant custom_components directory.
