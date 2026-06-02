@@ -1,6 +1,6 @@
 {
   "domain": "spa_backend",
-  "name": "Spa Backend",
+  "name": "Norviq",
   "codeowners": ["@openai"],
   "config_flow": true,
   "documentation": "https://github.com/kaareseras/home-assistant-spa-backend#readme",

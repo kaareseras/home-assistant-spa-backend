@@ -1,6 +1,6 @@
-# Home Assistant Spa Backend Integration
+# Norviq Home Assistant Integration
 
-This repository contains a minimal Home Assistant custom integration for the existing spa backend.
+This repository contains a minimal Home Assistant custom integration for Norviq spa control.
 
 Highlights:
 - Username/password login against the backend

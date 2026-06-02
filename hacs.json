@@ -1,5 +1,5 @@
 {
-  "name": "Spa Backend",
+  "name": "Norviq",
   "content_in_root": false,
   "domains": ["climate", "switch"],
   "homeassistant": "2024.1.0"
