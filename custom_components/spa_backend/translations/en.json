@@ -3,10 +3,10 @@
     "step": {
       "user": {
         "title": "Connect to Norviq",
-        "description": "Sign in with your Norviq username and password.",
+        "description": "Sign in with your Norviq email address and password.",
         "data": {
           "backend_url": "Backend URL",
-          "username": "Username",
+          "username": "Email",
           "password": "Password"
         }
       },
