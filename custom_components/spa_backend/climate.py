@@ -6,9 +6,10 @@ from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
-from .const import DEFAULT_NAME, DOMAIN
+from .const import DOMAIN
 
 
 async def async_setup_entry(
@@ -17,10 +18,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SpaBackendClimate(hass, entry, data)], update_before_add=True)
+    async_add_entities([SpaBackendClimate(entry, data)])
 
 
-class SpaBackendClimate(ClimateEntity):
+class SpaBackendClimate(CoordinatorEntity, ClimateEntity):
     _attr_has_entity_name = True
     _attr_name = "Climate"
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
@@ -28,14 +29,32 @@ class SpaBackendClimate(ClimateEntity):
     _attr_hvac_modes = ["heat", "off"]
     _attr_supported_hvac_modes = ["heat", "off"]
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, data: dict[str, Any]) -> None:
-        self.hass = hass
+    def __init__(self, entry: ConfigEntry, data: dict[str, Any]) -> None:
+        super().__init__(data["coordinator"])
         self.entry = entry
         self.client = data["client"]
         self.device_uid = data["device_uid"]
         self.device_id = data["device_id"]
         self._attr_unique_id = f"{entry.entry_id}-climate"
         self._attr_device_info = data["device_info"]
+
+    @property
+    def _state(self) -> dict:
+        return self.coordinator.data or {}
+
+    @property
+    def current_temperature(self) -> float | None:
+        value = self._state.get("water_temp_c")
+        return float(value) if value is not None else None
+
+    @property
+    def target_temperature(self) -> float | None:
+        value = self._state.get("temp_setpoint_c")
+        return float(value) if value is not None else None
+
+    @property
+    def hvac_mode(self) -> str:
+        return "heat"
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         temperature = kwargs.get(ATTR_TEMPERATURE)
@@ -46,12 +65,4 @@ class SpaBackendClimate(ClimateEntity):
             self.device_id,
             temperature,
         )
-        await self.async_update_ha_state()
-
-    def update(self) -> None:
-        telemetry = self.client.fetch_latest_telemetry(self.device_uid)
-        current = float(telemetry.get("water_temp_c", 0.0) or 0.0)
-        target = float(telemetry.get("temp_setpoint_c", current) or current)
-        self._attr_current_temperature = current
-        self._attr_target_temperature = target
-        self._attr_hvac_mode = "heat"
+        await self.coordinator.async_request_refresh()

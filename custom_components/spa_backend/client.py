@@ -125,6 +125,14 @@ class SpaBackendClient:
             return samples[-1].get("values", {})
         return {}
 
+    def fetch_device_state(self, device_id: int) -> dict:
+        """Return the latest cached state for a device via the dashboard endpoint."""
+        for device in self.list_my_devices():
+            if device.get("id") == device_id:
+                state = device.get("state") or {}
+                return state if isinstance(state, dict) else {}
+        return {}
+
     def ws_url(self) -> str:
         return f"{self.base_url.replace('http://', 'ws://').replace('https://', 'wss://')}/ws/telemetry?token={self.access_token}"
 

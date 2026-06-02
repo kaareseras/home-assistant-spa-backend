@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from datetime import timedelta
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_component
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, MANUFACTURER
 from .client import SpaBackendClient
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -18,6 +23,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.async_add_executor_job(client.login)
 
     device_uid = entry.data["device_uid"]
+    device_id = entry.data["device_id"]
+
+    async def _async_update() -> dict:
+        try:
+            return await hass.async_add_executor_job(
+                client.fetch_device_state, device_id
+            )
+        except Exception as err:
+            raise UpdateFailed(str(err)) from err
+
+    coordinator: DataUpdateCoordinator[dict] = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name=f"{DOMAIN}-{entry.entry_id}",
+        update_interval=timedelta(seconds=20),
+        update_method=_async_update,
+    )
+    await coordinator.async_config_entry_first_refresh()
+
     device_info = DeviceInfo(
         identifiers={(DOMAIN, str(entry.entry_id))},
         manufacturer=MANUFACTURER,
@@ -29,24 +53,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
         "device_uid": device_uid,
-        "device_id": entry.data["device_id"],
+        "device_id": device_id,
         "spa_id": entry.data.get("spa_id"),
         "device_info": device_info,
+        "coordinator": coordinator,
     }
 
-    async def _handle_ws_message(message: dict) -> None:
-        if message.get("type") != "telemetry":
-            return
-        for domain in ("climate", "switch"):
-            for state in hass.states.async_all(domain):
-                if state.attributes.get("friendly_name", "").startswith("Spa Backend"):
-                    await entity_component.async_update_entity(hass, state.entity_id)
-
-    async def _listen_forever() -> None:
-        await hass.async_add_executor_job(client.listen_updates, _handle_ws_message)
-
     await hass.config_entries.async_forward_entry_setups(entry, ["climate", "switch"])
-    hass.async_create_task(_listen_forever())
     return True
 
 

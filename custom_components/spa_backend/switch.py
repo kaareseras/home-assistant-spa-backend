@@ -6,8 +6,16 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DEFAULT_NAME, DEFAULT_SWITCHES, DOMAIN
+from .const import DEFAULT_SWITCHES, DOMAIN
+
+_STATE_KEY_BY_COMMAND = {
+    "jet_1": "jet_1_on",
+    "jet_2": "jet_2_on",
+    "toggle_blower": "blower_on",
+    "toggle_lights": "lights_on",
+}
 
 
 async def async_setup_entry(
@@ -17,24 +25,23 @@ async def async_setup_entry(
 ) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
     entities = [
-        SpaBackendSwitch(hass, entry, data, command_type, label)
+        SpaBackendSwitch(entry, data, command_type, label)
         for command_type, label in DEFAULT_SWITCHES
     ]
-    async_add_entities(entities, update_before_add=True)
+    async_add_entities(entities)
 
 
-class SpaBackendSwitch(SwitchEntity):
+class SpaBackendSwitch(CoordinatorEntity, SwitchEntity):
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        hass: HomeAssistant,
         entry: ConfigEntry,
         data: dict[str, Any],
         command_type: str,
         label: str,
     ) -> None:
-        self.hass = hass
+        super().__init__(data["coordinator"])
         self.entry = entry
         self.client = data["client"]
         self.device_id = data["device_id"]
@@ -43,6 +50,17 @@ class SpaBackendSwitch(SwitchEntity):
         self._attr_unique_id = f"{entry.entry_id}-{command_type}"
         self._attr_translation_key = None
         self._attr_device_info = data["device_info"]
+        self._state_key = _STATE_KEY_BY_COMMAND.get(command_type)
+
+    @property
+    def is_on(self) -> bool | None:
+        if not self._state_key:
+            return None
+        state = self.coordinator.data or {}
+        value = state.get(self._state_key)
+        if value is None:
+            return None
+        return bool(value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(
@@ -51,6 +69,7 @@ class SpaBackendSwitch(SwitchEntity):
             self.command_type,
             True,
         )
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(
@@ -59,6 +78,4 @@ class SpaBackendSwitch(SwitchEntity):
             self.command_type,
             False,
         )
-
-    def update(self) -> None:
-        self._attr_is_on = False
+        await self.coordinator.async_request_refresh()
