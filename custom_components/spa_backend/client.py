@@ -61,6 +61,31 @@ class SpaBackendClient:
                 return device
         raise ValueError(f"Device UID {device_uid!r} not found")
 
+    def list_spas(self) -> list[dict]:
+        response = requests.get(
+            f"{self.base_url}/spas",
+            headers=self._headers(),
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def list_my_devices(self) -> list[dict]:
+        """Return the user's adopted devices (with spa_id), via the dashboard."""
+        response = requests.get(
+            f"{self.base_url}/dashboard/devices",
+            headers=self._headers(),
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def find_device_for_spa(self, spa_id: int) -> dict:
+        for device in self.list_my_devices():
+            if device.get("spa_id") == spa_id:
+                return device
+        raise ValueError(f"No device found for spa {spa_id}")
+
     def set_temperature(self, device_id: int, temperature: float) -> dict:
         response = requests.post(
             f"{self.base_url}/devices/{device_id}/commands",

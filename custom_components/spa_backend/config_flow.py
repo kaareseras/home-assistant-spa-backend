@@ -41,17 +41,14 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._client: SpaBackendClient | None = None
         self._credentials: dict[str, str] | None = None
+        self._spas: list[dict] = []
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors = {}
         description_placeholders = None
-        default_backend_url = "https://api.norviq.dk"
+        backend_url = "https://api.norviq.dk"
 
         if user_input is not None:
-            backend_url = user_input.get("backend_url", default_backend_url).strip()
-            if not backend_url:
-                backend_url = default_backend_url
-
             self._credentials = {
                 "backend_url": backend_url,
                 "username": user_input["username"],
@@ -65,8 +62,8 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 await self.hass.async_add_executor_job(self._client.login)
-                devices = await self.hass.async_add_executor_job(
-                    self._client.list_devices
+                spas = await self.hass.async_add_executor_job(
+                    self._client.list_spas
                 )
             except requests.RequestException as err:
                 errors["base"] = get_login_error_key(err)
@@ -75,16 +72,16 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
                 description_placeholders = {"detail": f"{type(err).__name__}: {err}"}
             else:
-                if not devices:
+                if not spas:
                     errors["base"] = "no_devices"
                 else:
+                    self._spas = spas
                     return await self.async_step_select_device()
 
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required("backend_url", default=default_backend_url): str,
                     vol.Required("username"): str,
                     vol.Required("password"): str,
                 }
@@ -96,31 +93,34 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_select_device(self, user_input=None) -> FlowResult:
         errors = {}
 
-        if self._client is None or self._credentials is None:
+        if self._client is None or self._credentials is None or not self._spas:
             return await self.async_step_user()
 
-        devices = await self.hass.async_add_executor_job(self._client.list_devices)
         options = {
-            str(device.get("device_uid")): (
-                f"{device.get('device_uid')}"
-                + (f" — {device.get('serial_number')}" if device.get("serial_number") else "")
+            str(spa["id"]): (
+                spa.get("nickname") or f"Spa #{spa['id']}"
             )
-            for device in devices
-            if device.get("device_uid")
+            for spa in self._spas
+            if spa.get("id") is not None
         }
 
         if user_input is not None:
+            spa_id = int(user_input["spa_id"])
             try:
-                device = self._client.find_device_by_uid(user_input["device_uid"])
+                device = await self.hass.async_add_executor_job(
+                    self._client.find_device_for_spa, spa_id
+                )
             except Exception:
-                errors["base"] = "cannot_connect"
+                errors["base"] = "no_devices"
             else:
+                spa_name = options.get(str(spa_id), f"Spa #{spa_id}")
                 return self.async_create_entry(
-                    title=f"Spa {device['device_uid']}",
+                    title=spa_name,
                     data={
                         "backend_url": self._credentials["backend_url"],
                         "username": self._credentials["username"],
                         "password": self._credentials["password"],
+                        "spa_id": spa_id,
                         "device_uid": device["device_uid"],
                         "device_id": device["id"],
                     },
@@ -130,7 +130,7 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="select_device",
             data_schema=vol.Schema(
                 {
-                    vol.Required("device_uid"): vol.In(options),
+                    vol.Required("spa_id"): vol.In(options),
                 }
             ),
             errors=errors,
