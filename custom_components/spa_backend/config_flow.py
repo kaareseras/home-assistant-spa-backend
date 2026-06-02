@@ -18,6 +18,23 @@ def get_login_error_key(err: Exception) -> str:
     return "cannot_connect"
 
 
+def get_login_error_detail(err: Exception) -> str:
+    response = getattr(err, "response", None)
+    if response is not None:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict):
+            detail = payload.get("detail")
+            if isinstance(detail, str) and detail.strip():
+                return detail
+        text = getattr(response, "text", "")
+        if isinstance(text, str) and text.strip():
+            return text
+    return "Invalid email or password."
+
+
 class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -27,6 +44,7 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors = {}
+        description_placeholders = None
         default_backend_url = "https://api.norviq.dk"
 
         if user_input is not None:
@@ -52,6 +70,7 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             except requests.RequestException as err:
                 errors["base"] = get_login_error_key(err)
+                description_placeholders = {"detail": get_login_error_detail(err)}
             except Exception:
                 errors["base"] = "cannot_connect"
             else:
@@ -70,6 +89,7 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+            description_placeholders=description_placeholders,
         )
 
     async def async_step_select_device(self, user_input=None) -> FlowResult:
