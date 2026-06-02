@@ -42,6 +42,7 @@ class SpaBackendSwitch(SwitchEntity):
         self._attr_name = label
         self._attr_unique_id = f"{entry.entry_id}-{command_type}"
         self._attr_translation_key = None
+        self._attr_device_info = data["device_info"]
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(

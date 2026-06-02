@@ -35,7 +35,7 @@ class SpaBackendClimate(ClimateEntity):
         self.device_uid = data["device_uid"]
         self.device_id = data["device_id"]
         self._attr_unique_id = f"{entry.entry_id}-climate"
-        self._attr_name = f"{DEFAULT_NAME} {self.device_uid}"
+        self._attr_device_info = data["device_info"]
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         temperature = kwargs.get(ATTR_TEMPERATURE)

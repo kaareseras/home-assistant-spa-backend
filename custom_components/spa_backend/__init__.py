@@ -3,8 +3,9 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_component
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .client import SpaBackendClient
 
 
@@ -16,10 +17,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await hass.async_add_executor_job(client.login)
 
+    device_uid = entry.data["device_uid"]
+    device_info = DeviceInfo(
+        identifiers={(DOMAIN, str(entry.entry_id))},
+        manufacturer=MANUFACTURER,
+        name=entry.title,
+        model="Spa",
+        serial_number=str(device_uid),
+    )
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
-        "device_uid": entry.data["device_uid"],
+        "device_uid": device_uid,
         "device_id": entry.data["device_id"],
+        "spa_id": entry.data.get("spa_id"),
+        "device_info": device_info,
     }
 
     async def _handle_ws_message(message: dict) -> None:
