@@ -14,7 +14,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         username=entry.data["username"],
         password=entry.data["password"],
     )
-    client.login()
+    await hass.async_add_executor_job(client.login)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,

@@ -64,15 +64,16 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
             try:
-                self._client.login()
+                await self.hass.async_add_executor_job(self._client.login)
                 devices = await self.hass.async_add_executor_job(
                     self._client.list_devices
                 )
             except requests.RequestException as err:
                 errors["base"] = get_login_error_key(err)
                 description_placeholders = {"detail": get_login_error_detail(err)}
-            except Exception:
+            except Exception as err:
                 errors["base"] = "cannot_connect"
+                description_placeholders = {"detail": f"{type(err).__name__}: {err}"}
             else:
                 if not devices:
                     errors["base"] = "no_devices"

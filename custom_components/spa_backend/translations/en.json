@@ -19,7 +19,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to the Norviq backend.",
+      "cannot_connect": "Unable to connect to the Norviq backend: {detail}",
       "invalid_auth": "Invalid email or password: {detail}",
       "no_devices": "No spas were found for this account."
     },
