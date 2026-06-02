@@ -28,6 +28,9 @@ class SpaBackendClimate(CoordinatorEntity, ClimateEntity):
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = ["heat", "off"]
     _attr_supported_hvac_modes = ["heat", "off"]
+    _attr_min_temp = 10
+    _attr_max_temp = 40
+    _attr_target_temperature_step = 0.5
 
     def __init__(self, entry: ConfigEntry, data: dict[str, Any]) -> None:
         super().__init__(data["coordinator"])
