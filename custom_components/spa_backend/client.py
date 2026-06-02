@@ -136,21 +136,26 @@ class SpaBackendClient:
     def ws_url(self) -> str:
         return f"{self.base_url.replace('http://', 'ws://').replace('https://', 'wss://')}/ws/telemetry?token={self.access_token}"
 
-    def listen_updates(self, callback) -> None:
+    def build_ws_app(self, on_message, on_open=None, on_close=None):
+        """Build a WebSocketApp the caller can ``run_forever`` and ``close``."""
         if not self.access_token:
             self.login()
 
         def _on_message(_ws, message):
             try:
-                callback(json.loads(message))
+                on_message(json.loads(message))
             except Exception:
                 pass
 
         websocket.enableTrace(False)
-        ws = websocket.WebSocketApp(
+        return websocket.WebSocketApp(
             self.ws_url(),
             on_message=_on_message,
-            on_error=lambda _ws, err: None,
-            on_close=lambda *_: None,
+            on_open=(lambda _ws: on_open()) if on_open else None,
+            on_close=(lambda _ws, *_: on_close()) if on_close else None,
+            on_error=lambda _ws, _err: None,
         )
+
+    def listen_updates(self, callback) -> None:
+        ws = self.build_ws_app(callback)
         ws.run_forever()
