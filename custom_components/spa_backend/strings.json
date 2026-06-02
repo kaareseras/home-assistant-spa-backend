@@ -5,6 +5,7 @@
         "title": "Connect to Norviq",
         "description": "Sign in with your Norviq username and password.",
         "data": {
+          "backend_url": "Backend URL",
           "username": "Username",
           "password": "Password"
         }
@@ -19,6 +20,7 @@
     },
     "error": {
       "cannot_connect": "Unable to connect to the Norviq backend.",
+      "invalid_auth": "Invalid username or password.",
       "no_devices": "No spas were found for this account."
     },
     "abort": {

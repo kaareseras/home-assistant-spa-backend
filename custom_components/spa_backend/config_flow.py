@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import requests
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -8,6 +9,13 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN
 from .client import SpaBackendClient
+
+
+def get_login_error_key(err: Exception) -> str:
+    status = getattr(getattr(err, "response", None), "status_code", None)
+    if status in (400, 401, 403, 422):
+        return "invalid_auth"
+    return "cannot_connect"
 
 
 class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -19,11 +27,15 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors = {}
-        default_backend_url = "https://api.norviq.com"
+        default_backend_url = "https://api.norviq.dk"
 
         if user_input is not None:
+            backend_url = user_input.get("backend_url", default_backend_url).strip()
+            if not backend_url:
+                backend_url = default_backend_url
+
             self._credentials = {
-                "backend_url": default_backend_url,
+                "backend_url": backend_url,
                 "username": user_input["username"],
                 "password": user_input["password"],
             }
@@ -38,6 +50,8 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 devices = await self.hass.async_add_executor_job(
                     self._client.list_devices
                 )
+            except requests.RequestException as err:
+                errors["base"] = get_login_error_key(err)
             except Exception:
                 errors["base"] = "cannot_connect"
             else:
@@ -50,6 +64,7 @@ class SpaBackendConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
+                    vol.Required("backend_url", default=default_backend_url): str,
                     vol.Required("username"): str,
                     vol.Required("password"): str,
                 }

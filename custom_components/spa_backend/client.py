@@ -17,16 +17,29 @@ class SpaBackendClient:
         self.refresh_token = ""
 
     def login(self) -> dict:
-        response = requests.post(
-            f"{self.base_url}/users/login",
-            data={"username": self.username, "password": self.password},
-            timeout=30,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        self.access_token = payload.get("access_token", "")
-        self.refresh_token = payload.get("refresh_token", "")
-        return payload
+        last_error = None
+
+        for path in ("/auth/login", "/users/login"):
+            try:
+                response = requests.post(
+                    f"{self.base_url}{path}",
+                    data={"username": self.username, "password": self.password},
+                    timeout=30,
+                )
+                response.raise_for_status()
+                payload = response.json()
+                self.access_token = payload.get("access_token", "")
+                self.refresh_token = payload.get("refresh_token", "")
+                return payload
+            except requests.HTTPError as err:
+                last_error = err
+                if response.status_code != 404:
+                    raise
+
+        if last_error is not None:
+            raise last_error
+
+        raise RuntimeError("Unable to authenticate with backend")
 
     def _headers(self) -> dict:
         if not self.access_token:
