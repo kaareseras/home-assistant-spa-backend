@@ -19,10 +19,11 @@ Highlights:
 1. Copy this folder into your Home Assistant custom_components directory.
 2. Restart Home Assistant.
 3. Add the integration from the UI and enter:
-   - backend URL (for example: http://localhost:8000)
-   - username and password
-   - device UID to control
-4. Use the generated climate and switch entities.
+   - your Norviq username
+   - your Norviq password
+   - the spa you want to control from the selection list
+4. The integration connects to the default Norviq backend URL automatically.
+5. Use the generated climate and switch entities.
 
 ## Notes
 
